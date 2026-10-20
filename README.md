@@ -69,6 +69,9 @@ pdf2md convert-all input/ -o output/ -f md,csv,json
 # Inspeccionar un PDF sin escribir nada a disco
 pdf2md inspect input/Commissions_Data_Model.pdf
 
+# Comparar dos carpetas de vistas exportadas (detecta nuevas, eliminadas y modificadas)
+pdf2md views-diff output/v1/views output/v2/views -o output/views_diff.md
+
 # Ver la versión instalada
 pdf2md --version
 ```
@@ -122,6 +125,41 @@ Estas opciones también se pueden fijar de forma permanente en
 | `0`    | Éxito, sin advertencias                          |
 | `1`    | Error (PDF no encontrado, corrupto o Docling falló) |
 | `2`    | Éxito con advertencias (ej. tabla omitida)       |
+
+### Comparación de vistas (`views-diff`)
+
+El comando `views-diff` compara dos carpetas de vistas exportadas (`.md`
+generados por el comando `views`) y genera un reporte Markdown con:
+
+- **Vistas nuevas:** presentes solo en la carpeta nueva.
+- **Vistas eliminadas:** presentes solo en la carpeta anterior.
+- **Vistas modificadas:** presentes en ambas pero con SQL distinto (incluye
+  un diff unificado del SQL).
+- **Detalle por vista:** tabla con *todas* las vistas de ambas carpetas y su
+  estado (🆕 Nueva, 🗑️ Eliminada, ✏️ Modificada, ✅ Sin cambios). Para las
+  modificadas indica brevemente el tipo de cambio:
+  - `+ / − columnas salida: ...` — columnas de salida agregadas o quitadas
+    (o `orden de columnas salida` si solo cambió el orden).
+  - `+ / − tablas origen: ...` — tablas `FROM`/`JOIN` agregadas o quitadas.
+  - `filtro WHERE agregado / eliminado / modificado`.
+  - `solo comentarios/formato` — el SQL es equivalente ignorando
+    comentarios, espacios y mayúsculas.
+  - `lógica SQL (SELECT/JOIN/expresiones)` — cualquier otro cambio.
+
+  Además muestra cuántas líneas se agregaron/quitaron en el diff.
+
+```bash
+# Comparar la exportación del 30/09 contra la del 19/10
+pdf2md views-diff output/v1/views output/v2/views
+
+# Especificar la ruta del reporte de salida
+pdf2md views-diff output/v1/views output/v2/views -o output/views_diff_report.md
+```
+
+| Opción         | Alias | Descripción                                         | Default                          |
+|----------------|-------|------------------------------------------------------|----------------------------------|
+| `--out`        | `-o`  | Ruta del reporte Markdown a escribir                  | `{after_dir}/views_diff_report.md` |
+| `--verbose`    | `-v`  | Logging detallado (`DEBUG`)                           | `false`                          |
 
 ## Estructura de archivos generados
 

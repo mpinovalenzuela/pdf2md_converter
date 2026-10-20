@@ -32,6 +32,7 @@ from pdf2md_converter.views import (
     render_views_index_markdown,
     view_filename,
 )
+from pdf2md_converter.views_diff import compare_views, render_diff_markdown
 from pdf2md_converter.writers.csv import write_table_csv
 from pdf2md_converter.writers.json import write_json
 from pdf2md_converter.writers.markdown import (
@@ -615,4 +616,76 @@ def views(
     )
 
     console.print(f"[bold green]OK[/bold green] {len(parsed_views)} vistas escritas en {views_dir}")
+    raise typer.Exit(code=EXIT_OK)
+
+
+@app.command("views-diff")
+def views_diff(
+    before_dir: Path = typer.Argument(
+        ...,
+        exists=True,
+        file_okay=False,
+        help="Carpeta con la versión anterior de las vistas (.md exportados por el comando 'views').",
+    ),
+    after_dir: Path = typer.Argument(
+        ...,
+        exists=True,
+        file_okay=False,
+        help="Carpeta con la versión nueva de las vistas (.md exportados por el comando 'views').",
+    ),
+    output_file: Path | None = typer.Option(
+        None,
+        "--out",
+        "-o",
+        help=(
+            "Ruta del reporte Markdown a escribir (default: "
+            "{after_dir}/views_diff_report.md)."
+        ),
+    ),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Logging detallado (DEBUG)."),
+) -> None:
+    """Compara dos carpetas de vistas exportadas (.md) y genera un reporte
+    con las vistas nuevas, eliminadas y modificadas (con diff del SQL).
+
+    Ejemplo:
+
+        pdf2md views-diff output/v1/views output/v2/views -o output/views_diff.md
+    """
+    setup_logger(level="DEBUG" if verbose else "INFO", log_file=None, console=True)
+
+    diff_result = compare_views(before_dir, after_dir)
+
+    if diff_result.total_before == 0 and diff_result.total_after == 0:
+        console.print(
+            "[yellow]No se encontraron vistas (.md) en ninguna de las carpetas[/yellow]"
+        )
+        raise typer.Exit(code=EXIT_WARNING)
+
+    report = render_diff_markdown(diff_result)
+    report_path = output_file or (after_dir / "views_diff_report.md")
+    write_markdown(report_path, report)
+
+    total_changes = len(diff_result.added) + len(diff_result.removed) + len(diff_result.modified)
+
+    summary = Table(title="Comparación de vistas")
+    summary.add_column("Métrica")
+    summary.add_column("Valor", justify="right")
+    summary.add_row("Vistas (anterior)", str(diff_result.total_before))
+    summary.add_row("Vistas (nueva)", str(diff_result.total_after))
+    summary.add_row("🆕 Nuevas", str(len(diff_result.added)))
+    summary.add_row("🗑️  Eliminadas", str(len(diff_result.removed)))
+    summary.add_row("✏️  Modificadas", str(len(diff_result.modified)))
+    summary.add_row("Sin cambios", str(diff_result.unchanged))
+    console.print(summary)
+
+    if total_changes:
+        console.print(
+            f"\n[bold green]OK[/bold green] Reporte escrito en: {report_path} "
+            f"({total_changes} cambio(s) detectado(s))"
+        )
+    else:
+        console.print(
+            f"\n[bold green]OK[/bold green] Sin diferencias. Reporte escrito en: {report_path}"
+        )
+
     raise typer.Exit(code=EXIT_OK)
