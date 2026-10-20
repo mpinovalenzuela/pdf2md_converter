@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "pdf2md-converter"
-version = "0.1.0"
+version = "0.2.0"
 description = "Convertidor de PDFs de modelos de datos (Oracle Data Modeler) a Markdown estructurado, CSV y JSON, orientado a alimentar un pipeline RAG."
 readme = "README.md"
 requires-python = ">=3.11"
